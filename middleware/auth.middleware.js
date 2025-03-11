@@ -1,32 +1,32 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.models.js";
 
-export const verifyJWT = async (req, res, next) => {   
+export const verifyJWT = async (req, res, next) => {
+    console.log("JWT verification middleware triggered");  // Debugging line
     const token = req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
-
+    
     if (!token) {
-        return res.status(401).json({ message: "Access denied" });
+        return res.status(401).json({ message: "Access denied, no token provided" });
     }
 
     try {
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
-        // Ensure that the token contains _id
-        if (!decoded || !decoded._id) {
-            return res.status(401).json({ message: "Access denied" });
+        // console.log("Decoded Token: ", decoded);
+        
+        if (!decoded.id) {
+            return res.status(401).json({ message: "Access denied, invalid" });
         }
 
-        const user = await User.findById(decoded._id).select("-password");
-
-        // If the user doesn't exist, access is denied
+        const user = await User.findById(decoded.id).select("-password");
+        
         if (!user) {
-            return res.status(401).json({ message: "Access denied" });
+            return res.status(401).json({ message: "Access denied, user not found" });
         }
 
         req.user = user;
         next();
-
     } catch (error) {
-        return res.status(401).json({ message: "Invalid token" });
+        console.error("Error in JWT verification:", error);
+        return res.status(401).json({ message: "Invalid token or session expired" });
     }
 };

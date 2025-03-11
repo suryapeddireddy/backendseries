@@ -72,8 +72,6 @@ const loginUser = asynchandler(async (req, res) => {
           return res.status(400).json({ message: "User not found" });
         }
     
-        
-    
         // Compare the entered password with the stored hashed password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
@@ -83,24 +81,46 @@ const loginUser = asynchandler(async (req, res) => {
         // Generate tokens
         const accessToken = await user.generateAccessToken();
         const refreshToken = await user.generateRefreshToken();
-    
-        res.json({
+
+        // Set tokens in cookies
+        res.cookie("accessToken", accessToken, {
+          httpOnly: true, // Prevents client-side access to the cookie
+          secure: false,  // Set to false for development (not over HTTPS)
+        });
+
+        res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          secure: false,  // Set to false for development
+        });
+
+        // Send successful response with status 200
+        return res.status(200).json({
           message: "Login successful",
           accessToken,
           refreshToken,
         });
       } catch (error) {
         console.error("Error in login:", error);
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
       }
 });
 
-const logoutUser = asynchandler(async (req, res) => {
-    await User.findByIdAndUpdate(req.user._id, { refreshToken: "" }, { new: true });
-    return res.status(200)
-        .clearCookie("accessToken")
-        .clearCookie("refreshToken")
-        .json({ message: "Logged out successfully" });
-});
+const logoutUser = async (req, res) => {
+    try {
+        // Optional: Remove refresh token from the database if you store it there
+        await User.findByIdAndUpdate(req.user._id, { refreshToken: "" }, { new: true });
+        
+        // Clear cookies and return a response
+        res
+            .clearCookie("accessToken", { httpOnly: true, secure: true, sameSite: 'Strict' })  // Add options for security
+            .clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: 'Strict' })
+            .status(200)
+            .json({ message: "Logged out successfully" });
+    } catch (error) {
+        console.error("Logout error:", error);
+        res.status(500).json({ message: "Something went wrong" });
+    }
+};
+
 
 export { registerUser, loginUser, logoutUser };
