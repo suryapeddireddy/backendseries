@@ -3,6 +3,7 @@ import asynchandler from "../utils/asynchandler.js";
 import User from "../models/user.models.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const registerUser = asynchandler(async (req, res) => {
     const { email, password, fullname, username } = req.body;
@@ -122,5 +123,28 @@ const logoutUser = async (req, res) => {
     }
 };
 
+const refreshAccessToken= async (req, res) => {
+try {
+    const incomingrefreshToken=req.cookies.refreshToken;
+    const decodeuser=jwt.verify(incomingrefreshToken,process.env.REFRESH_TOKEN_SECRET); 
+    const user=await User.findById(decodeuser.id);
+    if(!user){
+        return res.status(400).json({message:"User not found"});
+    }
+    if(user.refreshToken!==incomingrefreshToken){
+        return res.status(400).json({message:"Invalid refresh token"});
+    }
+    const {accessToken,refreshToken}=await generateAccessAndRefreshToken(user._id);
+    const options={httpOnly : true, secure : false};    
+    return res.status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json({message:"Access token refreshed successfully"});
 
-export { registerUser, loginUser, logoutUser };
+} catch (error) {
+       console.error("Error in refreshing access token:", error);
+        return res.status(500).json({ message: error.message });  
+}
+};
+
+export { registerUser, loginUser, logoutUser ,refreshAccessToken};
