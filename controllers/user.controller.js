@@ -147,4 +147,87 @@ try {
 }
 };
 
-export { registerUser, loginUser, logoutUser ,refreshAccessToken};
+const changeCurrentpassword=async(req,res,err)=>{
+try {
+const {newPassword,oldPassword}=req.body;
+if(!newPassword || !oldPassword){
+    return res.status(400).json({message:"All fields are required"});
+}
+const user=await User.findById(req.user._id).select("+password");
+if(!user){
+    return res.status(400).json({message:"User not found"});
+}
+const ismatch=await user.matchPassword(oldPassword);
+if(!ismatch){
+    return res.status(400).json({message:"Incorrect Old password"});
+}
+user.password=newPassword;
+await user.save({validateBeforeSave:false});
+return res.status(200).json({message:"Password changed successfully"});
+} catch (error) {
+ console.log("Error in changing password:",error);   
+}
+}
+
+const getcurrentUser=async(req,res)=>{
+try {
+return res.status(200).json({user:req.user}  , "current user fetched successfully");     
+} catch (error) {
+  console.log("Error in getting current user:",error);  
+}
+}
+
+const updatecurrentDetails=async(req,res)=>{
+try {
+ const {fullname, email,username}=req.body;
+ if(!fullname || !email || !username){
+     return res.status(400).json({message:"All fields are required"});
+ }
+ const user=await User.findById(req.user._id);
+ if(!user){
+     return res.status(400).json({message:"User not found"});
+ }
+    user.fullname=fullname;
+    user.email=email;
+    user.username=username;
+    await user.save({validateBeforeSave:false});
+} catch (error) {
+    console.log("Error in updating current user:",error); 
+}
+}
+
+const updateUserAvatar=async(req,res)=>{
+try {
+const avatarurl=await uploadOnCloudinary(req.file?.path);
+if(!avatarurl){
+    return res.status(500).json({message:"File upload failed"});
+}
+const user=await User.findById(req.user._id);
+if(!user){
+    return res.status(400).json({message:"User not found"});
+}
+user.avatar=avatarurl;
+await user.save({validateBeforeSave:false});
+return res.status(200).json({message:"User avatar updated successfully"});
+} catch (error) {
+ console.log("Error in updating user avatar:",error);   
+}
+}
+const updateUsercoverImage=async(req,res)=>{
+try {
+const coverImageurl=await uploadOnCloudinary(req.file?.path);
+if(!coverImageurl){
+    return res.status(500).json({message:"File upload failed"});
+}
+const user=await User.findById(req.user._id);
+if(!user){
+    return res.status(400).json({message:"User not found"});
+}
+user.coverImage=coverImageurl;
+await user.save({validateBeforeSave:false});
+return res.status(200).json({message:"User coverImage updated successfully"});
+} catch (error) {
+ console.log("Error in updating user coverImage:",error);   
+}
+}
+export { registerUser, loginUser, logoutUser ,refreshAccessToken,changeCurrentpassword,getcurrentUser,updatecurrentDetails,updateUserAvatar,updateUsercoverImage};
